@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ChevronLeft } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 
 import { prisma } from "@/lib/db"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import BusinessCard from "@/components/business-card"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import SearchFilter from "@/components/search-filter"
+import Pagination from "@/components/pagination"
 
 interface CategoryPageProps {
   params: {
@@ -17,8 +18,11 @@ interface CategoryPageProps {
   }
   searchParams: {
     q?: string
+    page?: string
   }
 }
+
+const ITEMS_PER_PAGE = 12
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { city, category } = params
@@ -40,7 +44,10 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const { city, category } = params
-  const { q } = searchParams
+  const { q, page = "1" } = searchParams
+  
+  const currentPage = parseInt(page, 10) || 1
+  const skip = (currentPage - 1) * ITEMS_PER_PAGE
   
   // Format city name for display (e.g., "aurora-il" -> "Aurora, IL")
   const cityDisplay = city
@@ -49,25 +56,36 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     .join(', ')
   
   // Format category name for display (e.g., "plumbers" -> "Plumbers")
-  const categoryDisplay = category.charAt(0).toUpperCase() + category.slice(1)
+  const categoryDisplay = category === 'all' 
+    ? 'All Services' 
+    : category.charAt(0).toUpperCase() + category.slice(1)
   
-  // Get businesses for this category and city
-  const businesses = await prisma.business.findMany({
-    where: {
-      category: category.toLowerCase(),
-      city: city.toLowerCase(),
-      ...(q ? {
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { description: { contains: q, mode: 'insensitive' } },
-        ],
-      } : {}),
-    },
-    orderBy: [
-      { isFeatured: 'desc' },
-      { name: 'asc' },
-    ],
-  })
+  // Get businesses for this category and city with pagination
+  const where = {
+    ...(category !== 'all' ? { category: category.toLowerCase() } : {}),
+    city: city.toLowerCase(),
+    ...(q ? {
+      OR: [
+        { name: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+      ],
+    } : {}),
+  }
+  
+  const [businesses, totalCount] = await Promise.all([
+    prisma.business.findMany({
+      where,
+      orderBy: [
+        { isFeatured: 'desc' },
+        { name: 'asc' },
+      ],
+      skip,
+      take: ITEMS_PER_PAGE,
+    }),
+    prisma.business.count({ where }),
+  ])
+  
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
   
   // Get all categories for the filter
   const categories = await prisma.business.groupBy({
@@ -89,7 +107,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   })
   
   // If no businesses found and no search query, return 404
-  if (businesses.length === 0 && !q) {
+  if (businesses.length === 0 && !q && currentPage === 1 && category !== 'all') {
     notFound()
   }
   
@@ -108,21 +126,27 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 </Link>
               </Button>
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-                {categoryDisplay} in {cityDisplay}
+                {q ? `Search results for "${q}"` : `${categoryDisplay} in ${cityDisplay}`}
               </h1>
               <p className="mt-4 text-muted-foreground md:text-xl">
-                Browse trusted {category} serving the {cityDisplay} area.
+                {q 
+                  ? `Found ${totalCount} results for "${q}" in ${categoryDisplay}`
+                  : `Browse trusted ${categoryDisplay.toLowerCase()} in ${cityDisplay}`
+                }
               </p>
             </div>
             
             <SearchFilter 
               currentCategory={category} 
               currentCity={city} 
-              categories={categories.map(c => ({
-                value: c.category,
-                label: c.category.charAt(0).toUpperCase() + c.category.slice(1),
-                count: c._count.id
-              }))}
+              categories={[
+                { value: 'all', label: 'All Services', count: 0 },
+                ...categories.map(c => ({
+                  value: c.category,
+                  label: c.category.charAt(0).toUpperCase() + c.category.slice(1),
+                  count: c._count.id
+                }))
+              ]}
               cities={cities.map(c => ({
                 value: c.city,
                 label: c.city
@@ -149,22 +173,32 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
             )}
             
             {businesses.length > 0 && (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
-                {businesses.map((business) => (
-                  <BusinessCard
-                    key={business.id}
-                    id={business.id}
-                    name={business.name}
-                    description={business.description || ''}
-                    phone={business.phone}
-                    featured={business.isFeatured}
-                    address={business.address}
-                    website={business.website}
-                    email={business.email}
-                    slug={business.slug}
+              <>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
+                  {businesses.map((business) => (
+                    <BusinessCard
+                      key={business.id}
+                      id={business.id}
+                      name={business.name}
+                      description={business.description || ''}
+                      phone={business.phone}
+                      featured={business.isFeatured}
+                      address={business.address}
+                      website={business.website}
+                      email={business.email}
+                      slug={business.slug}
+                    />
+                  ))}
+                </div>
+                
+                {totalPages > 1 && (
+                  <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    baseUrl={`/${city}/${category}${q ? `?q=${encodeURIComponent(q)}&` : '?'}`}
                   />
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         </section>

@@ -3,12 +3,13 @@ import { Wrench, Thermometer, FileSignature, HardHat, Home, Sparkles, type Lucid
 import { Card, CardContent } from "@/components/ui/card"
 
 interface CategoryCardProps {
-  icon: string
+  icon: React.ReactNode
   name: string
   href: string
+  count: number
 }
 
-export default function CategoryCard({ icon, name, href }: CategoryCardProps) {
+export default function CategoryCard({ icon, name, href, count }: CategoryCardProps) {
   const IconMap: Record<string, LucideIcon> = {
     Wrench,
     Thermometer,
@@ -18,14 +19,17 @@ export default function CategoryCard({ icon, name, href }: CategoryCardProps) {
     Sparkles,
   }
 
-  const Icon = IconMap[icon] || Wrench
+  const Icon = IconMap[icon as string] || Wrench
 
   return (
     <Link href={href}>
-      <Card className="h-full transition-all hover:bg-muted/50">
+      <Card className="h-full transition-colors hover:bg-accent">
         <CardContent className="flex flex-col items-center justify-center p-6">
-          <Icon className="h-10 w-10 mb-2" />
-          <h3 className="text-center font-medium">{name}</h3>
+          <div className="mb-4 rounded-full bg-primary/10 p-3 text-primary">
+            {Icon}
+          </div>
+          <h3 className="text-center text-base font-medium">{name}</h3>
+          <p className="text-center text-sm text-muted-foreground">{count} listings</p>
         </CardContent>
       </Card>
     </Link>

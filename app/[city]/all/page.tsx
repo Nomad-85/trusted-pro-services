@@ -9,6 +9,7 @@ import BusinessCard from "@/components/business-card"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import SearchFilter from "@/components/search-filter"
+import Pagination from "@/components/pagination"
 
 interface AllBusinessesPageProps {
   params: {
@@ -16,8 +17,11 @@ interface AllBusinessesPageProps {
   }
   searchParams: {
     q?: string
+    page?: string
   }
 }
+
+const ITEMS_PER_PAGE = 12
 
 export async function generateMetadata({ params, searchParams }: AllBusinessesPageProps): Promise<Metadata> {
   const { city } = params
@@ -41,7 +45,10 @@ export async function generateMetadata({ params, searchParams }: AllBusinessesPa
 
 export default async function AllBusinessesPage({ params, searchParams }: AllBusinessesPageProps) {
   const { city } = params
-  const { q } = searchParams
+  const { q, page = "1" } = searchParams
+  
+  const currentPage = parseInt(page, 10) || 1
+  const skip = (currentPage - 1) * ITEMS_PER_PAGE
   
   // Format city name for display (e.g., "aurora-il" -> "Aurora, IL")
   const cityDisplay = city
@@ -49,22 +56,31 @@ export default async function AllBusinessesPage({ params, searchParams }: AllBus
     .map(part => part.toUpperCase() === 'IL' ? 'IL' : part.charAt(0).toUpperCase() + part.slice(1))
     .join(', ')
   
-  // Get businesses for this city with optional search
-  const businesses = await prisma.business.findMany({
-    where: {
-      city: city.toLowerCase(),
-      ...(q ? {
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { description: { contains: q, mode: 'insensitive' } },
-        ],
-      } : {}),
-    },
-    orderBy: [
-      { isFeatured: 'desc' },
-      { name: 'asc' },
-    ],
-  })
+  // Get businesses for this city with optional search and pagination
+  const where = {
+    city: city.toLowerCase(),
+    ...(q ? {
+      OR: [
+        { name: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+      ],
+    } : {}),
+  }
+  
+  const [businesses, totalCount] = await Promise.all([
+    prisma.business.findMany({
+      where,
+      orderBy: [
+        { isFeatured: 'desc' },
+        { name: 'asc' },
+      ],
+      skip,
+      take: ITEMS_PER_PAGE,
+    }),
+    prisma.business.count({ where }),
+  ])
+  
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
   
   // Get all categories for the filter
   const categories = await prisma.business.groupBy({
@@ -109,7 +125,7 @@ export default async function AllBusinessesPage({ params, searchParams }: AllBus
               </h1>
               <p className="mt-4 text-muted-foreground md:text-xl">
                 {q 
-                  ? `Found ${businesses.length} results for "${q}" in ${cityDisplay}`
+                  ? `Found ${totalCount} results for "${q}" in ${cityDisplay}`
                   : `Browse all service providers in ${cityDisplay}`
                 }
               </p>
@@ -118,11 +134,14 @@ export default async function AllBusinessesPage({ params, searchParams }: AllBus
             <SearchFilter 
               currentCategory="all" 
               currentCity={city} 
-              categories={categories.map(c => ({
-                value: c.category,
-                label: c.category.charAt(0).toUpperCase() + c.category.slice(1),
-                count: c._count.id
-              }))}
+              categories={[
+                { value: 'all', label: 'All Services', count: 0 },
+                ...categories.map(c => ({
+                  value: c.category,
+                  label: c.category.charAt(0).toUpperCase() + c.category.slice(1),
+                  count: c._count.id
+                }))
+              ]}
               cities={cities.map(c => ({
                 value: c.city,
                 label: c.city
@@ -149,22 +168,32 @@ export default async function AllBusinessesPage({ params, searchParams }: AllBus
             )}
             
             {businesses.length > 0 && (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
-                {businesses.map((business) => (
-                  <BusinessCard
-                    key={business.id}
-                    id={business.id}
-                    name={business.name}
-                    description={business.description || ''}
-                    phone={business.phone}
-                    featured={business.isFeatured}
-                    address={business.address}
-                    website={business.website}
-                    email={business.email}
-                    slug={business.slug}
+              <>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
+                  {businesses.map((business) => (
+                    <BusinessCard
+                      key={business.id}
+                      id={business.id}
+                      name={business.name}
+                      description={business.description || ''}
+                      phone={business.phone}
+                      featured={business.isFeatured}
+                      address={business.address}
+                      website={business.website}
+                      email={business.email}
+                      slug={business.slug}
+                    />
+                  ))}
+                </div>
+                
+                {totalPages > 1 && (
+                  <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    baseUrl={`/${city}/all${q ? `?q=${encodeURIComponent(q)}&` : '?'}`}
                   />
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         </section>

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Phone, Globe, Mail, MapPin, Star } from "lucide-react"
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 interface BusinessCardProps {
   id: string
@@ -28,26 +29,33 @@ export default function BusinessCard({
   slug
 }: BusinessCardProps) {
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
+    <Card className={cn(
+      "h-full flex flex-col transition-all",
+      featured && "border-primary/50 shadow-md relative"
+    )}>
+      {featured && (
+        <div className="absolute -top-3 -right-3">
+          <Badge className="bg-primary text-primary-foreground shadow-sm">
+            <Star className="h-3 w-3 mr-1 fill-current" />
+            Featured
+          </Badge>
+        </div>
+      )}
+      <CardHeader className={cn(
+        featured && "bg-primary/5 rounded-t-lg"
+      )}>
         <div className="flex justify-between items-start">
           <Link href={`/business/${slug}`} className="hover:underline">
             <CardTitle className="text-xl">{name}</CardTitle>
           </Link>
-          {featured && (
-            <Badge className="ml-2">
-              <Star className="h-3 w-3 mr-1" />
-              Featured
-            </Badge>
-          )}
         </div>
-        <CardDescription className="mt-2">{description}</CardDescription>
+        <CardDescription className="mt-2 line-clamp-3">{description}</CardDescription>
       </CardHeader>
-      <CardFooter className="flex flex-col items-start mt-auto gap-2">
+      <CardFooter className="flex flex-col items-start mt-auto gap-2 pt-6">
         {address && (
           <div className="flex items-center text-sm">
             <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-            <span>{address}</span>
+            <span className="line-clamp-1">{address}</span>
           </div>
         )}
         <div className="flex items-center text-sm">
@@ -57,7 +65,7 @@ export default function BusinessCard({
         {email && (
           <div className="flex items-center text-sm">
             <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
-            <span>{email}</span>
+            <span className="line-clamp-1">{email}</span>
           </div>
         )}
         <div className="flex justify-between items-center w-full mt-4">
@@ -69,7 +77,9 @@ export default function BusinessCard({
               </a>
             </Button>
           )}
-          <Button asChild>
+          <Button asChild className={cn(
+            featured && "bg-primary hover:bg-primary/90"
+          )}>
             <Link href={`/business/${slug}`}>
               <Phone className="h-4 w-4 mr-2" />
               Contact

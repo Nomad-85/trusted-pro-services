@@ -10,27 +10,27 @@ async function main() {
   // Sample data
   const businesses = [
     {
-      name: 'Aurora Plumbing Pros',
+      name: 'Acme Plumbing',
       category: 'plumbers',
       city: 'aurora-il',
-      phone: '(630) 555-1234',
-      email: 'info@auroraplumbingpros.com',
-      website: 'https://auroraplumbingpros.com',
-      address: '123 Main St, Aurora, IL 60505',
+      phone: '6305551234',
+      email: 'info@acmeplumbing.com',
+      website: 'acmeplumbing.com',
+      address: '123 Main St, Aurora, IL',
       zip: '60505',
-      description: 'Family-owned plumbing service with 20+ years of experience in residential and commercial repairs.',
+      description: 'Professional plumbing services for residential and commercial properties. Available 24/7 for emergency repairs.',
       isFeatured: true,
     },
     {
-      name: 'Fox Valley HVAC Solutions',
+      name: 'Cool Air HVAC',
       category: 'hvac',
       city: 'aurora-il',
-      phone: '(630) 555-5678',
-      email: 'service@foxvalleyhvac.com',
-      website: 'https://foxvalleyhvac.com',
-      address: '456 State St, Aurora, IL 60506',
+      phone: '6305552345',
+      email: 'service@coolair.com',
+      website: 'coolair.com',
+      address: '456 Oak Ave, Aurora, IL',
       zip: '60506',
-      description: 'Certified HVAC technicians providing heating, cooling, and ventilation services with 24/7 emergency support.',
+      description: 'Heating, ventilation, and air conditioning services. Specializing in installation, maintenance, and repairs.',
       isFeatured: true,
     },
     {
@@ -92,7 +92,7 @@ async function main() {
     })
   }
 
-  console.log('Database has been seeded!')
+  console.log(`Database has been seeded with ${businesses.length} businesses.`)
 }
 
 main()

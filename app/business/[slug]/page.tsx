@@ -40,6 +40,7 @@ export async function generateMetadata({ params }: BusinessPageProps): Promise<M
 export default async function BusinessPage({ params }: BusinessPageProps) {
   const { slug } = params
   
+  // Get business details
   const business = await prisma.business.findUnique({
     where: { slug }
   })
@@ -47,6 +48,12 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
   if (!business) {
     notFound()
   }
+  
+  // Increment view count
+  await prisma.business.update({
+    where: { id: business.id },
+    data: { viewCount: { increment: 1 } }
+  })
   
   // Format city name for display (e.g., "aurora-il" -> "Aurora, IL")
   const cityDisplay = business.city
@@ -72,116 +79,145 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
                 </Link>
               </Button>
               
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-                      {business.name}
-                    </h1>
-                    {business.isFeatured && (
-                      <Badge className="ml-2">
-                        <Star className="h-3 w-3 mr-1" />
-                        Featured
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="mt-2 text-muted-foreground">
-                    {categoryDisplay} in {cityDisplay}
-                  </p>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button asChild>
-                    <a href={`tel:${business.phone}`}>
-                      <Phone className="h-4 w-4 mr-2" />
-                      Call Now
-                    </a>
-                  </Button>
-                  {business.email && (
-                    <Button variant="outline" asChild>
-                      <a href={`mailto:${business.email}`}>
-                        <Mail className="h-4 w-4 mr-2" />
-                        Email
-                      </a>
-                    </Button>
-                  )}
-                </div>
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">{business.name}</h1>
+                {business.isFeatured && (
+                  <Badge className="ml-2 bg-primary text-primary-foreground">
+                    <Star className="h-3 w-3 mr-1 fill-current" />
+                    Featured
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="flex flex-wrap gap-4 text-muted-foreground">
+                <Link 
+                  href={`/${business.city}/${business.category}`}
+                  className="hover:underline flex items-center"
+                >
+                  <span className="mr-2">Category:</span>
+                  <Badge variant="outline">{categoryDisplay}</Badge>
+                </Link>
+                <Link 
+                  href={`/${business.city}/all`}
+                  className="hover:underline flex items-center"
+                >
+                  <span className="mr-2">Location:</span>
+                  <Badge variant="outline">{cityDisplay}</Badge>
+                </Link>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="md:col-span-2 space-y-8">
+            <div className="grid gap-8 md:grid-cols-3">
+              <div className="md:col-span-2 space-y-6">
                 <Card>
                   <CardContent className="p-6">
                     <h2 className="text-xl font-semibold mb-4">About</h2>
-                    <p className="text-muted-foreground">
-                      {business.description || "No description provided."}
-                    </p>
+                    {business.description ? (
+                      <p className="text-muted-foreground whitespace-pre-line">{business.description}</p>
+                    ) : (
+                      <p className="text-muted-foreground italic">No description provided.</p>
+                    )}
                   </CardContent>
                 </Card>
                 
-                {/* Placeholder for reviews or additional content */}
                 <Card>
                   <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold mb-4">Services</h2>
-                    <p className="text-muted-foreground">
-                      Contact this business directly to learn more about their services and availability.
-                    </p>
+                    <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center">
+                          <Phone className="h-5 w-5 mr-2 text-primary" />
+                          <p className="font-medium">Phone</p>
+                        </div>
+                        <p className="text-muted-foreground">
+                          <a href={`tel:${business.phone}`} className="hover:underline">
+                            {formatPhoneNumber(business.phone)}
+                          </a>
+                        </p>
+                      </div>
+                      
+                      {business.email && (
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center">
+                            <Mail className="h-5 w-5 mr-2 text-primary" />
+                            <p className="font-medium">Email</p>
+                          </div>
+                          <p className="text-muted-foreground">
+                            <a href={`mailto:${business.email}`} className="hover:underline">
+                              {business.email}
+                            </a>
+                          </p>
+                        </div>
+                      )}
+                      
+                      {business.website && (
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center">
+                            <Globe className="h-5 w-5 mr-2 text-primary" />
+                            <p className="font-medium">Website</p>
+                          </div>
+                          <p className="text-muted-foreground">
+                            <a 
+                              href={business.website.startsWith('http') ? business.website : `https://${business.website}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {business.website.replace(/^https?:\/\//i, '')}
+                            </a>
+                          </p>
+                        </div>
+                      )}
+                      
+                      {business.address && (
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center">
+                            <MapPin className="h-5 w-5 mr-2 text-primary" />
+                            <p className="font-medium">Address</p>
+                          </div>
+                          <p className="text-muted-foreground">{business.address}</p>
+                          {business.zip && (
+                            <p className="text-muted-foreground">{business.zip}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
               
               <div className="space-y-6">
-                <Card>
+                <Card className="bg-primary/5 border-primary/20">
                   <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
+                    <h2 className="text-xl font-semibold mb-4">Contact Now</h2>
                     <div className="space-y-4">
-                      <div className="flex items-start">
-                        <Phone className="h-5 w-5 mr-3 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="font-medium">Phone</p>
-                          <p className="text-muted-foreground">{formatPhoneNumber(business.phone)}</p>
-                        </div>
-                      </div>
+                      <Button className="w-full" size="lg" asChild>
+                        <a href={`tel:${business.phone}`}>
+                          <Phone className="mr-2 h-4 w-4" />
+                          Call {formatPhoneNumber(business.phone)}
+                        </a>
+                      </Button>
                       
                       {business.email && (
-                        <div className="flex items-start">
-                          <Mail className="h-5 w-5 mr-3 text-muted-foreground mt-0.5" />
-                          <div>
-                            <p className="font-medium">Email</p>
-                            <p className="text-muted-foreground">{business.email}</p>
-                          </div>
-                        </div>
+                        <Button variant="outline" className="w-full" size="lg" asChild>
+                          <a href={`mailto:${business.email}`}>
+                            <Mail className="mr-2 h-4 w-4" />
+                            Send Email
+                          </a>
+                        </Button>
                       )}
                       
                       {business.website && (
-                        <div className="flex items-start">
-                          <Globe className="h-5 w-5 mr-3 text-muted-foreground mt-0.5" />
-                          <div>
-                            <p className="font-medium">Website</p>
-                            <a 
-                              href={business.website} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              {business.website.replace(/^https?:\/\//, '')}
-                            </a>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {business.address && (
-                        <div className="flex items-start">
-                          <MapPin className="h-5 w-5 mr-3 text-muted-foreground mt-0.5" />
-                          <div>
-                            <p className="font-medium">Address</p>
-                            <p className="text-muted-foreground">{business.address}</p>
-                            {business.zip && (
-                              <p className="text-muted-foreground">{business.zip}</p>
-                            )}
-                          </div>
-                        </div>
+                        <Button variant="outline" className="w-full" size="lg" asChild>
+                          <a 
+                            href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Globe className="mr-2 h-4 w-4" />
+                            Visit Website
+                          </a>
+                        </Button>
                       )}
                     </div>
                   </CardContent>
