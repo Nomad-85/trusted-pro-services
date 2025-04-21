@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input"
 import { ThemeToggle } from "@/components/theme-toggle"
 import CategoryCard from "@/components/category-card"
 import BusinessCard from "@/components/business-card"
-import { Wrench, Thermometer, FileSignature, HardHat, Home, Sparkles } from "lucide-react"
+import { Wrench, Thermometer, FileSignature, HardHat, Home as HomeIcon, Sparkles } from "lucide-react"
+import { redirect } from "next/navigation"
 
 import { prisma } from "@/lib/db"
 import { Card, CardContent } from "@/components/ui/card"
@@ -35,6 +36,19 @@ function CategoryCard({ icon, name, href, count }: CategoryCardProps) {
   )
 }
 
+async function searchBusinesses(formData: FormData) {
+  "use server"
+  
+  const searchQuery = formData.get("search") as string
+  
+  if (!searchQuery) {
+    return
+  }
+  
+  // Redirect to the search results page
+  redirect(`/aurora-il/all?q=${encodeURIComponent(searchQuery)}`)
+}
+
 export default async function Home() {
   // Get counts for each category
   const categoryCounts = await prisma.business.groupBy({
@@ -59,10 +73,10 @@ export default async function Home() {
       isFeatured: true,
       city: 'aurora-il'
     },
-    take: 3,
     orderBy: {
       name: 'asc'
-    }
+    },
+    take: 3
   })
 
   return (
@@ -70,7 +84,7 @@ export default async function Home() {
       <Header />
       
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted/50">
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-muted/50 to-background">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
@@ -80,6 +94,20 @@ export default async function Home() {
                 <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
                   Connect with top-rated local professionals for all your service needs.
                 </p>
+              </div>
+              <div className="w-full max-w-sm space-y-2">
+                <form action={searchBusinesses} className="flex w-full max-w-sm items-center space-x-2">
+                  <Input
+                    type="search"
+                    name="search"
+                    placeholder="Search for services..."
+                    className="flex-1"
+                  />
+                  <Button type="submit">
+                    <Search className="mr-2 h-4 w-4" />
+                    Search
+                  </Button>
+                </form>
               </div>
             </div>
           </div>
@@ -121,7 +149,7 @@ export default async function Home() {
                 count={countMap['contractors'] || 0} 
               />
               <CategoryCard 
-                icon={<Home className="h-6 w-6" />} 
+                icon={<HomeIcon className="h-6 w-6" />} 
                 name="Roofers" 
                 href="/aurora-il/roofers" 
                 count={countMap['roofers'] || 0} 
@@ -151,6 +179,7 @@ export default async function Home() {
                 {featuredBusinesses.map((business) => (
                   <BusinessCard
                     key={business.id}
+                    id={business.id}
                     name={business.name}
                     description={business.description || ''}
                     phone={business.phone}
@@ -158,6 +187,7 @@ export default async function Home() {
                     address={business.address}
                     website={business.website}
                     email={business.email}
+                    slug={business.slug}
                   />
                 ))}
               </div>

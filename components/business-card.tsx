@@ -1,9 +1,11 @@
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Phone, Globe, Mail, MapPin } from "lucide-react"
+import { Phone, Globe, Mail, MapPin, Star } from "lucide-react"
+import Link from "next/link"
 
 interface BusinessCardProps {
+  id: string
   name: string
   description: string
   phone: string
@@ -11,23 +13,33 @@ interface BusinessCardProps {
   address?: string | null
   website?: string | null
   email?: string | null
+  slug: string
 }
 
 export default function BusinessCard({ 
+  id,
   name, 
   description, 
   phone, 
   featured = false,
   address,
   website,
-  email
+  email,
+  slug
 }: BusinessCardProps) {
   return (
     <Card className="h-full flex flex-col">
       <CardHeader>
         <div className="flex justify-between items-start">
-          <CardTitle className="text-xl">{name}</CardTitle>
-          {featured && <Badge className="ml-2">Featured</Badge>}
+          <Link href={`/business/${slug}`} className="hover:underline">
+            <CardTitle className="text-xl">{name}</CardTitle>
+          </Link>
+          {featured && (
+            <Badge className="ml-2">
+              <Star className="h-3 w-3 mr-1" />
+              Featured
+            </Badge>
+          )}
         </div>
         <CardDescription className="mt-2">{description}</CardDescription>
       </CardHeader>
@@ -57,9 +69,11 @@ export default function BusinessCard({
               </a>
             </Button>
           )}
-          <Button>
-            <Phone className="h-4 w-4 mr-2" />
-            Contact
+          <Button asChild>
+            <Link href={`/business/${slug}`}>
+              <Phone className="h-4 w-4 mr-2" />
+              Contact
+            </Link>
           </Button>
         </div>
       </CardFooter>

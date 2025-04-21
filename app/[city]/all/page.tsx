@@ -10,36 +10,17 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import SearchFilter from "@/components/search-filter"
 
-interface CategoryPageProps {
+interface AllBusinessesPageProps {
   params: {
     city: string
-    category: string
   }
   searchParams: {
     q?: string
   }
 }
 
-export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
-  const { city, category } = params
-  
-  // Format city name for display (e.g., "aurora-il" -> "Aurora, IL")
-  const cityDisplay = city
-    .split('-')
-    .map(part => part.toUpperCase() === 'IL' ? 'IL' : part.charAt(0).toUpperCase() + part.slice(1))
-    .join(', ')
-  
-  // Format category name for display (e.g., "plumbers" -> "Plumbers")
-  const categoryDisplay = category.charAt(0).toUpperCase() + category.slice(1)
-  
-  return {
-    title: `${categoryDisplay} in ${cityDisplay} - Aurora IL Services`,
-    description: `Find trusted ${category} in ${cityDisplay}. Browse top-rated service providers with verified reviews and contact information.`,
-  }
-}
-
-export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
-  const { city, category } = params
+export async function generateMetadata({ params, searchParams }: AllBusinessesPageProps): Promise<Metadata> {
+  const { city } = params
   const { q } = searchParams
   
   // Format city name for display (e.g., "aurora-il" -> "Aurora, IL")
@@ -48,13 +29,29 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     .map(part => part.toUpperCase() === 'IL' ? 'IL' : part.charAt(0).toUpperCase() + part.slice(1))
     .join(', ')
   
-  // Format category name for display (e.g., "plumbers" -> "Plumbers")
-  const categoryDisplay = category.charAt(0).toUpperCase() + category.slice(1)
+  return {
+    title: q 
+      ? `Search results for "${q}" in ${cityDisplay} - Aurora IL Services`
+      : `All Services in ${cityDisplay} - Aurora IL Services`,
+    description: q
+      ? `Search results for "${q}" in ${cityDisplay}. Find trusted service providers in Aurora, Illinois.`
+      : `Browse all service providers in ${cityDisplay}. Find trusted professionals for your needs.`,
+  }
+}
+
+export default async function AllBusinessesPage({ params, searchParams }: AllBusinessesPageProps) {
+  const { city } = params
+  const { q } = searchParams
   
-  // Get businesses for this category and city
+  // Format city name for display (e.g., "aurora-il" -> "Aurora, IL")
+  const cityDisplay = city
+    .split('-')
+    .map(part => part.toUpperCase() === 'IL' ? 'IL' : part.charAt(0).toUpperCase() + part.slice(1))
+    .join(', ')
+  
+  // Get businesses for this city with optional search
   const businesses = await prisma.business.findMany({
     where: {
-      category: category.toLowerCase(),
       city: city.toLowerCase(),
       ...(q ? {
         OR: [
@@ -108,15 +105,18 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 </Link>
               </Button>
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-                {categoryDisplay} in {cityDisplay}
+                {q ? `Search results for "${q}"` : `All Services in ${cityDisplay}`}
               </h1>
               <p className="mt-4 text-muted-foreground md:text-xl">
-                Browse trusted {category} serving the {cityDisplay} area.
+                {q 
+                  ? `Found ${businesses.length} results for "${q}" in ${cityDisplay}`
+                  : `Browse all service providers in ${cityDisplay}`
+                }
               </p>
             </div>
             
             <SearchFilter 
-              currentCategory={category} 
+              currentCategory="all" 
               currentCity={city} 
               categories={categories.map(c => ({
                 value: c.category,
@@ -141,8 +141,8 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                   No businesses match your search for "{q}". Try a different search term or browse all listings.
                 </p>
                 <Button asChild className="mt-4">
-                  <Link href={`/${city}/${category}`}>
-                    View All {categoryDisplay}
+                  <Link href={`/${city}/all`}>
+                    View All Services
                   </Link>
                 </Button>
               </div>
